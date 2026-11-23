@@ -127,7 +127,7 @@
           <p class="section-title" style="margin-top:0">Demanda y estacionalidad</p>
           <div class="control">
             <label>Ajuste de demanda global <span class="val tab-num" id="lbl-demanda">1.00x</span></label>
-            <input type="range" id="sl-demanda" min="0.7" max="1.5" step="0.01" value="1.0">
+            <input type="range" id="sl-demanda" min="0.7" max="1.5" step="0.01" value="1.0" aria-label="Ajuste de demanda global">
             <p class="hint">Sube o baja el volumen de venta proyectado de forma pareja.</p>
           </div>
           <div class="control">
@@ -161,19 +161,19 @@
         <div class="card">
           <p class="section-title" style="margin-top:0">Calibración del sistema (Q, R)</p>
           <div class="control">
-            <label>Factor de calibración de Q <span class="val tab-num" id="lbl-factor">2.0x</span></label>
-            <input type="range" id="sl-factor" min="1" max="3.5" step="0.1" value="2.0">
-            <p class="hint">Multiplica el Q* teórico del EOQ (que ya escala con √demanda). 1.0x = fórmula sin calibrar.</p>
+            <label>Factor de calibración de Q <span class="val tab-num" id="lbl-factor">1.0x</span></label>
+            <input type="range" id="sl-factor" min="1" max="3.5" step="0.1" value="1.0" aria-label="Factor de calibración de Q">
+            <p class="hint">Multiplica el Q* teórico del EOQ (que ya escala con √demanda). 1.0x = fórmula pura, sin ajuste — y es el valor por defecto porque ya cumple el objetivo de servicio.</p>
           </div>
           <div class="control">
             <label>Nivel de servicio objetivo <span class="val tab-num" id="lbl-nivel">95%</span></label>
-            <input type="range" id="sl-nivel" min="0.80" max="0.99" step="0.01" value="0.95">
+            <input type="range" id="sl-nivel" min="0.80" max="0.99" step="0.01" value="0.95" aria-label="Nivel de servicio objetivo">
             <p class="hint">Percentil usado para fijar el punto de reorden R.</p>
           </div>
           <div class="control" style="margin-bottom:0">
             <label>Merma predictiva <span class="val tab-num" id="lbl-merma">8%</span></label>
-            <input type="range" id="sl-merma" min="0" max="0.25" step="0.01" value="0.08">
-            <p class="hint">% de desperdicio/vencimiento estimado. Se suma a almacenamiento (1.5%) y costo de capital (0.5%) para formar el costo de mantener H.</p>
+            <input type="range" id="sl-merma" min="0" max="0.25" step="0.01" value="0.08" aria-label="Merma predictiva">
+            <p class="hint">% de desperdicio/vencimiento estimado. Se suma a almacenamiento (1.5%) y costo de capital (0.5%) para formar el costo de mantener H — no mueve el nivel de servicio ni la tabla de R, solo el costo de mantener inventario.</p>
           </div>
         </div>
       </div>
@@ -183,12 +183,12 @@
           <p class="section-title" style="margin-top:0">Impuestos y comisiones</p>
           <div class="control">
             <label>Tarifa de impuesto <span class="val tab-num" id="lbl-impuesto">8%</span></label>
-            <input type="range" id="sl-impuesto" min="0" max="0.19" step="0.01" value="0.08">
-            <p class="hint">8% = Impuesto al Consumo (restaurante independiente, caso de Bachué). 19% = IVA pleno (solo si operara como franquicia de marca de un tercero).</p>
+            <input type="range" id="sl-impuesto" min="0" max="0.19" step="0.01" value="0.08" aria-label="Tarifa de impuesto">
+            <p class="hint">8% = Impuesto al Consumo (restaurante independiente, caso de Bachué). 19% = IVA pleno (solo si operara como franquicia de marca de un tercero). Solo afecta el reparto del P&amp;L anual, no el nivel de servicio ni el inventario.</p>
           </div>
           <div class="control" style="margin-bottom:0">
             <label>Comisión plataformas de domicilio <span class="val tab-num" id="lbl-comision">25%</span></label>
-            <input type="range" id="sl-comision" min="0" max="0.40" step="0.01" value="0.25">
+            <input type="range" id="sl-comision" min="0" max="0.40" step="0.01" value="0.25" aria-label="Comisión plataformas de domicilio">
             <p class="hint">Se aplica solo sobre la parte de venta que va por canal domicilio (según la mezcla real de la empresa). No hay cifra oficial única; 25% es un punto de partida editable.</p>
           </div>
         </div>
@@ -427,14 +427,14 @@
         </div>
       </div>
 
-      <p class="section-title">¿Cuánto vale haber calibrado el sistema?</p>
+      <p class="section-title">¿Vale la pena subir el factor por encima de 1.0x?</p>
       <div class="card">
-        <p style="font-size:.85rem; margin-bottom:16px">Compara el resultado del año con la configuración actual contra lo que daría el EOQ "de libro" sin calibrar (factor 1.0x) — la misma comparación de nivel de servicio de la Fase 4 (~92% vs. 94.9%), ahora en pesos.</p>
+        <p style="font-size:.85rem; margin-bottom:16px">Por defecto el factor es 1.0x: el EOQ puro de la fórmula clásica, sin ningún ajuste. La Fase 4 confirmó por simulación que, con el lead time implementado correctamente, ese Q* ya cumple el objetivo de 95% de servicio (da ~97.6%) sin necesidad de calibrar nada. Esta tabla compara tu configuración actual contra ese mismo EOQ puro, para que veas cuánto cuesta en pesos subir el factor por si quieres más colchón de seguridad.</p>
         <table>
           <thead><tr><th>Escenario</th><th style="text-align:right">Nivel de servicio</th><th style="text-align:right">Utilidad operacional (año)</th></tr></thead>
           <tbody>
-            <tr><td>Sistema calibrado (configuración actual)</td><td class="num" id="comp-servicio-calibrado">—</td><td class="num" id="comp-utilidad-calibrado">—</td></tr>
-            <tr><td>EOQ puro, sin calibrar (1.0x)</td><td class="num" id="comp-servicio-base">—</td><td class="num" id="comp-utilidad-base">—</td></tr>
+            <tr><td>Configuración actual</td><td class="num" id="comp-servicio-calibrado">—</td><td class="num" id="comp-utilidad-calibrado">—</td></tr>
+            <tr><td>EOQ puro, sin ajuste (1.0x)</td><td class="num" id="comp-servicio-base">—</td><td class="num" id="comp-utilidad-base">—</td></tr>
           </tbody>
         </table>
         <p style="margin-top:14px; font-size:.95rem">Diferencia: <b class="tab-num" id="comp-diferencia" style="font-size:1.2rem">—</b></p>
@@ -518,8 +518,8 @@
       </div>
 
       <ul class="findings" style="margin-top:20px">
-        <li><b>El EOQ puro no alcanza el nivel de servicio.</b> Con Q* teórico (1.0x), incluso ya con R sobre la mezcla real de lead time: ~92% de servicio real contra un objetivo de 95%.</li>
-        <li><b>Calibrar con Monte Carlo sí cierra la brecha.</b> Q a 2.0x sobre ese mismo R: ~94.9% simulado.</li>
+        <li><b>Validar por simulación encontró (y corrigió) un bug propio.</b> Una versión anterior del motor de simulación tenía un error de un día en cómo se contaban los días de tránsito de un pedido (un lead time "nominal" de 2 días tardaba 3 días reales en llegar). Ese bug hacía parecer que el EOQ puro solo lograba ~92% de servicio, "justificando" doblar Q. Al corregirlo, el EOQ puro sin ningún ajuste ya da ~97.6% de tasa de llenado y ~95.5% de nivel de servicio por día — por encima del objetivo de 95%, sin calibrar nada.</li>
+        <li><b>No se necesitó calibrar Q, una vez corregido el bug.</b> El factor por defecto es 1.0x (fórmula pura). Subir el factor sigue siendo editable en "Control de variables" por si se quiere más colchón de seguridad, pero cuesta en costo de mantener sin una ganancia de servicio proporcional.</li>
         <li><b>El turismo de fin de semana es el motor de la variabilidad.</b> +105% de venta sábado-domingo.</li>
         <li><b>El presupuesto global subestima diciembre en Bachué.</b> 12.0% real vs. 9.1% de REPR% asignado — la mayor brecha del año.</li>
       </ul>

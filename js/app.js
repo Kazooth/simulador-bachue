@@ -4,7 +4,7 @@ let DATA = null;
 // Estado del panel "what-if". Todo lo que el usuario puede mover vive aqui.
 // ---------------------------------------------------------------------------
 const state = {
-  factor: 2.0,          // factor de calibracion sobre Q* teorico
+  factor: 1.0,          // factor sobre Q* teorico (1.0 = EOQ puro; ya cumple el objetivo, ver Fase 4)
   nivel: 0.95,           // nivel de servicio objetivo (para R)
   demandaSlider: 1.0,    // ajuste manual de demanda global (0.7x - 1.5x)
   estacion: 'normal',    // normal | festivo | temporada_alta | temporada_baja
@@ -14,7 +14,11 @@ const state = {
   menuActivos: {},        // producto -> bool
   menuPrecios: {},        // producto -> precio actual (editable)
 };
-const ESTACION_MULT = { normal: 1.0, festivo: 1.25, temporada_alta: 1.15, temporada_baja: 0.85 };
+// temporada_alta=1.44 (no 1.15): el propio hallazgo de Fase 5 mide que
+// diciembre es 12.0% de la venta anual real de Bachue contra 8.33% de un
+// mes promedio (12.0/8.33 = +44%) -- el multiplicador de este slider estaba
+// muy por debajo de lo que los datos del proyecto ya habian encontrado.
+const ESTACION_MULT = { normal: 1.0, festivo: 1.25, temporada_alta: 1.44, temporada_baja: 0.85 };
 const ESTACION_LABEL = { normal: 'Normal', festivo: 'Puente / festivo', temporada_alta: 'Temporada alta (dic.)', temporada_baja: 'Temporada baja' };
 
 let scenarios = { A: null, B: null };
@@ -83,6 +87,7 @@ function demandaEfectiva(){
 function menuFactorActivo(){
   const total = DATA.menu.length;
   const activos = DATA.menu.filter(m => state.menuActivos[m.producto]).length;
+  if (!activos) return 1; // ningun plato activo -> no reducir la demanda a 0 (ver precioFactorActivo)
   return total ? activos/total : 1;
 }
 function precioFactorActivo(){
@@ -147,7 +152,11 @@ function simular(q, rPorDia, mult, nReplicasOverride){
       let pedidoColocado = false, pedidoLeadTime = null;
       if (posicion <= rPorDia[dia]){
         const lt = Math.random() < P.prob_lead_time_largo ? P.lead_time_largo : P.lead_time_base;
-        enTransito.push({dias: lt, cantidad: q});
+        // lt-1: el descuento de dias de arriba ya corrio para hoy, asi que
+        // un pedido con lead time nominal lt debe quedar con lt-1 dias
+        // restantes para llegar exactamente en lt dias (antes decia "lt",
+        // lo que hacia que tardara lt+1 dias reales en llegar).
+        enTransito.push({dias: lt - 1, cantidad: q});
         nPedidos++;
         pedidoColocado = true; pedidoLeadTime = lt;
         if (d>=BURN_IN) costoOrdenar += P.s_ordenar;
@@ -756,8 +765,11 @@ function renderResultadoAnual(res){
     De eso, <b>${fmtCOP(ra.ventaPerdidaAnual)}</b> no se facturaron porque el inventario no alcanzó (quiebre de stock),
     es decir, nivel de servicio del ${fmtPct(res.nivelServicio)} sobre la demanda real.`;
 
-  // Comparacion: sistema calibrado (factor actual) vs. EOQ puro sin calibrar (1.0x) -
-  // pone en pesos el hallazgo de la Fase 4 (88% vs 94.9% de nivel de servicio).
+  // Comparacion: configuracion actual (factor state.factor) vs. EOQ puro de
+  // formula (1.0x) - el default ya es 1.0x porque la Fase 4 confirmo que el
+  // EOQ puro, con el lead time simulado correctamente, cumple el objetivo de
+  // servicio sin calibrar nada (ver fase4_simulacion.py). Esta tabla muestra
+  // cuanto cuesta en pesos subir el factor por encima de ese default.
   const base = calcularBaselineSinCalibrar();
   const diferencia = ra.utilidadOperacional - base.utilidadOperacional;
   document.getElementById('comp-servicio-calibrado').textContent = fmtPct(res.nivelServicio);
@@ -767,9 +779,11 @@ function renderResultadoAnual(res){
   const diffEl = document.getElementById('comp-diferencia');
   animateNumber(diffEl, diferencia, v=>(v>=0?'+':'')+fmtCOP(v));
   diffEl.style.color = diferencia>=0 ? 'var(--good)' : 'var(--critical)';
-  document.getElementById('comp-nota').textContent = diferencia>=0
-    ? `Calibrar el sistema con la simulación (factor ${state.factor.toFixed(1)}x en vez de 1.0x) vale ${fmtCOP(diferencia)} más al año en esta configuración.`
-    : `Con esta configuración puntual, el EOQ sin calibrar da mejor resultado en pesos — vale la pena revisar el factor de calibración en "Control de variables".`;
+  document.getElementById('comp-nota').textContent = Math.abs(state.factor-1.0)<0.05
+    ? `Esta es la configuración por defecto (factor 1.0x = EOQ puro): ya cumple el objetivo de servicio, no hace falta subir el factor.`
+    : diferencia>=0
+      ? `Con factor ${state.factor.toFixed(1)}x esta configuración da ${fmtCOP(diferencia)} MÁS de utilidad al año que el EOQ puro (1.0x).`
+      : `Con factor ${state.factor.toFixed(1)}x esta configuración da ${fmtCOP(Math.abs(diferencia))} MENOS de utilidad al año que el EOQ puro (1.0x) — el colchón extra de inventario no se está pagando solo aquí.`;
 }
 
 function renderComparativo(svg, real, simulado, nDias){
@@ -831,6 +845,18 @@ function construirEscenaReproduccion(){
   svg.appendChild(pInv);
   const playhead = svgEl('circle',{r:5.5,fill:'var(--accent)',stroke:'var(--surface)','stroke-width':2.2});
   svg.appendChild(playhead);
+
+  // El clearSvg() de arriba borró el marcador de día (markerLine/markerDot)
+  // que renderTrayectoria() había dejado en trayectoriaGeom, dejando esas
+  // referencias apuntando a nodos ya fuera del DOM. Se recrean aquí y se
+  // reemplaza trayectoriaGeom para que moveDayMarker() (el slider "Día",
+  // los botones ◀/▶ y "Quiebre siguiente") sigan funcionando durante y
+  // después de la reproducción, en vez de quedar huérfanos para siempre.
+  const markerLine = svgEl('line',{class:'day-marker-line', x1:ML,x2:ML, y1:MT, y2:MT+plotH});
+  const markerDot = svgEl('circle',{class:'day-marker-dot', r:5.5, cx:ML, cy:MT});
+  svg.appendChild(markerLine); svg.appendChild(markerDot);
+  trayectoriaGeom = { x, y, datos, markerLine, markerDot };
+  moveDayMarker(parseInt(document.getElementById('sl-dia')?.value || 0, 10));
 
   return { nDias, datos, svg, W,H,ML,MR,MT,MB,plotW,plotH, x, y, pInv, playhead, marcados:{}, ultimoDiaMostrado:-1, estado:'playing', rafId:null };
 }
@@ -899,6 +925,7 @@ function frameReproduccion(now){
   if (iFloor !== p.ultimoDiaMostrado){
     p.ultimoDiaMostrado = iFloor;
     renderDiaDetalle(datos[iFloor], iFloor);
+    moveDayMarker(iFloor);
   }
 
   if (t < 1) p.rafId = requestAnimationFrame(frameReproduccion);
@@ -973,7 +1000,13 @@ function renderResumen(res){
   animateNumber(document.getElementById('kpi-servicio'), res.nivelServicio, v=>fmtPct(v));
   animateNumber(document.getElementById('kpi-servicio-ciclo'), res.nivelServicioCiclo, v=>fmtPct(v));
   const pill = document.getElementById('kpi-servicio-pill');
-  const meets = res.nivelServicio >= state.nivel - 0.015;
+  // Tolerancia de 1.5pp: la simulacion es Monte Carlo (varia un poco cada
+  // corrida), asi que exigir el objetivo exacto marcaria "no cumple" por
+  // ruido estadistico normal. Se explica en el title para que no sea una
+  // cifra oculta.
+  const TOLERANCIA_PP = 0.015;
+  const meets = res.nivelServicio >= state.nivel - TOLERANCIA_PP;
+  pill.title = `Objetivo: ${fmtPct(state.nivel)} · tolerancia de ${fmtPct(TOLERANCIA_PP,1)} por variación normal de la simulación Monte Carlo`;
   if (meets){ pill.className='pill good'; pill.textContent='Cumple el objetivo'; }
   else { pill.className='pill critical'; pill.textContent='Por debajo del objetivo'; }
   if (meets && prevMeetsTarget === false){
@@ -1330,7 +1363,11 @@ function xlDibujarLinea(w, h, titulo, serie, quiebreIdx){
 function xlDibujarDonut(w, h, titulo, items){
   const { c, ctx } = xlNuevoCanvas(w, h);
   ctx.fillStyle = '#1e293b'; ctx.font = 'bold 15px Calibri, Arial'; ctx.fillText(titulo, 14, 24);
-  const total = items.reduce((s, it) => s + Math.max(0, it.value), 0) || 1;
+  // Se sanea cada it.value a 0 si no es finito (NaN/Infinity): si no, "NaN || 1"
+  // confunde un total NaN con uno legitimamente en cero (NaN es falsy en JS).
+  items = items.map(it => ({ ...it, value: Number.isFinite(it.value) ? it.value : 0 }));
+  const sumaValida = items.reduce((s, it) => s + Math.max(0, it.value), 0);
+  const total = sumaValida > 0 ? sumaValida : 1;
   const cx = h / 2 + 20, cy = h / 2 + 14, rOut = Math.min(h, w * 0.46) / 2 - 10, rIn = rOut * 0.55;
   let ang = -Math.PI / 2;
   items.forEach(it => {
@@ -1578,15 +1615,15 @@ async function exportarExcel(){
     filasRA.forEach((f, idx) => { if (f.tipo === 'total' || f.tipo === 'final') tRA.ws.getCell(tRA.firstDataRow + idx, 1).font = { bold: true }; });
 
     const filasComp = [
-      { concepto: 'EOQ puro sin calibrar (factor 1.0×) — nivel de servicio', calibrado: res.nivelServicio, base: base.nivelServicio, tipo: 'pct' },
+      { concepto: 'EOQ puro de fórmula (factor 1.0×) — nivel de servicio', calibrado: res.nivelServicio, base: base.nivelServicio, tipo: 'pct' },
       { concepto: 'Utilidad operacional (año)', calibrado: ra.utilidadOperacional, base: base.utilidadOperacional, tipo: 'money' },
     ];
     const compStart = tRA.lastDataRow + 3;
     tRA.ws.mergeCells(compStart, 1, compStart, 3);
-    tRA.ws.getCell(compStart, 1).value = 'Comparación: sistema calibrado por simulación vs. EOQ puro de libro (factor 1.0×)';
+    tRA.ws.getCell(compStart, 1).value = 'Comparación: configuración actual vs. EOQ puro de fórmula (factor 1.0×, el valor por defecto)';
     tRA.ws.getCell(compStart, 1).font = { bold: true, size: 11, color: { argb: XL_COLOR.title } };
     const compHeaderRow = compStart + 1;
-    ['Indicador', 'Calibrado (actual)', 'Sin calibrar (EOQ puro)'].forEach((h, i) => { tRA.ws.getCell(compHeaderRow, i + 1).value = h; });
+    ['Indicador', 'Configuración actual', 'EOQ puro (1.0×)'].forEach((h, i) => { tRA.ws.getCell(compHeaderRow, i + 1).value = h; });
     xlEstilizarEncabezado(tRA.ws.getRow(compHeaderRow), XL_COLOR.header2);
     filasComp.forEach((f, idx) => {
       const r = compHeaderRow + 1 + idx;
@@ -1607,10 +1644,19 @@ async function exportarExcel(){
     xlAgregarImagen(wb, tRA.ws, barrasRA, 4, 0, 560, 300);
 
     // ---------------- Trayectoria 365 días ----------------
-    const filasTray = res.traza.map((d, i) => ({
+    const filasTray = res.traza.map((d, i) => {
+      // d.diaSemana es el ciclo arbitrario Lunes-Domingo que usa el motor de
+      // simulacion internamente (dia 0 = "Lunes"), sin relacion con el
+      // calendario real. La columna "Fecha real 2025" SI es una fecha real,
+      // asi que el dia de la semana mostrado debe salir de esa fecha (misma
+      // formula que Ventas_Reales_2025), o quedaria desalineado en las 365
+      // filas (ej. 2025-01-01 es miercoles, no "Lunes").
+      const fecha = DATA.serie_diaria[i] ? fechaUTC(DATA.serie_diaria[i].fecha) : null;
+      const diaSemanaReal = fecha ? DATA.dias[(fecha.getUTCDay() + 6) % 7] : d.diaSemana;
+      return {
       diaNum: i + 1,
-      fecha: DATA.serie_diaria[i] ? fechaUTC(DATA.serie_diaria[i].fecha) : null,
-      diaSemana: d.diaSemana,
+      fecha,
+      diaSemana: diaSemanaReal,
       invAbrir: Math.round(d.inventarioInicio),
       posicion: Math.round(d.posicion),
       r: Math.round(d.R),
@@ -1619,7 +1665,8 @@ async function exportarExcel(){
       demanda: Math.round(d.demanda),
       invCerrar: Math.round(d.inventario),
       quiebre: d.quiebre ? 'Sí' : 'No',
-    }));
+      };
+    });
     const tTray = xlCrearHojaTabla(wb, 'Trayectoria_365_dias', 'Trayectoria simulada día a día (365 días)', 'Una réplica representativa de la simulación Monte Carlo',
       [{ header: 'Día (1-365)', key: 'diaNum', width: 11 },
        { header: 'Fecha real 2025', key: 'fecha', width: 15, numFmt: 'dd/mm/yyyy' },

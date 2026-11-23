@@ -179,7 +179,16 @@ nav.tabs button:nth-child(6){animation-delay:.20s}
    gana el inline), asi que las filas de 2/4 columnas NO colapsaban en movil.
    Con clases, el breakpoint si aplica. */
 @media (max-width:860px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:520px){.kpi-row{grid-template-columns:1fr}}
+@media (max-width:520px){
+  .kpi-row{grid-template-columns:1fr}
+  /* .kpi-row.cols-2 tiene la misma especificidad (dos clases) que la regla
+     de la linea 176, que no esta dentro de ningun @media: sin este override
+     explicito aqui, esa regla de dos clases le gana a esta de @media (la
+     especificidad se compara antes que el @media), y la fila de 2 KPIs
+     nunca colapsaba a 1 columna en movil -- el mismo bug que el comentario
+     de arriba dice haber corregido, reintroducido via .cols-2. */
+  .kpi-row.cols-2{grid-template-columns:1fr}
+}
 .kpi{
   background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px 17px;
   box-shadow:var(--shadow); transition:box-shadow .2s var(--ease), transform .2s var(--ease); position:relative; overflow:hidden;
