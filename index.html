@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador Bachué</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+</head>
+<body>
+
+<div id="loading-msg" class="loading"><div class="spin"></div>Cargando datos del simulador...</div>
+<div id="toast-wrap"></div>
+<div id="chart-tooltip" class="chart-tooltip"></div>
+
+<div id="app-root">
+
+<aside id="sidebar">
+  <div class="brand">
+    <span class="mark">B</span>
+    <span class="text">
+      <span class="name">Bachué</span>
+      <span class="tag">Panel · Inventario</span>
+    </span>
+  </div>
+  <button class="btn ghost no-print" id="btn-sidebar-toggle" aria-label="Mostrar u ocultar el menú" title="Mostrar u ocultar el menú">
+    <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="14" height="12" rx="2"/><line x1="7" y1="3" x2="7" y2="15"/></svg>
+  </button>
+  <nav class="tabs">
+    <div class="tab-indicator" id="tab-indicator" aria-hidden="true"></div>
+    <button data-tab="resumen" data-label="Resumen" aria-selected="true" title="Resumen — tecla 1">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 9h3l2-6 4 12 2-6h5"/></svg>
+      <span class="label">Resumen</span><span class="kbd">1</span>
+    </button>
+    <button data-tab="variables" data-label="Control de variables" title="Control de variables — tecla 2">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><line x1="2" y1="4" x2="16" y2="4"/><circle cx="6" cy="4" r="1.8" fill="currentColor"/><line x1="2" y1="9" x2="16" y2="9"/><circle cx="12" cy="9" r="1.8" fill="currentColor"/><line x1="2" y1="14" x2="16" y2="14"/><circle cx="8" cy="14" r="1.8" fill="currentColor"/></svg>
+      <span class="label">Variables</span><span class="kbd">2</span>
+    </button>
+    <button data-tab="simulacion" data-label="Simulación detallada" title="Simulación detallada — tecla 3">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="10" height="10" rx="1.5"/><line x1="7" y1="1" x2="7" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/><line x1="7" y1="14" x2="7" y2="17"/><line x1="11" y1="14" x2="11" y2="17"/><line x1="1" y1="7" x2="4" y2="7"/><line x1="1" y1="11" x2="4" y2="11"/><line x1="14" y1="7" x2="17" y2="7"/><line x1="14" y1="11" x2="17" y2="11"/></svg>
+      <span class="label">Simulación</span><span class="kbd">3</span>
+    </button>
+    <button data-tab="tiempo" data-label="Línea de tiempo" title="Línea de tiempo — tecla 4">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9.5" r="6.8"/><path d="M9 5.5v4l3 2"/><path d="M6.5 1.3h5"/></svg>
+      <span class="label">Línea de tiempo</span><span class="kbd">4</span>
+    </button>
+    <button data-tab="escenarios" data-label="Comparar escenarios" title="Comparar escenarios — tecla 5">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="6" height="12" rx="1"/><rect x="10" y="3" width="6" height="12" rx="1"/></svg>
+      <span class="label">Escenarios</span><span class="kbd">5</span>
+    </button>
+    <button data-tab="resultado" data-label="Resultado anual" title="Resultado anual — tecla 6">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="7.2"/><path d="M9 5.2v7.6M11.2 6.9c0-1-1-1.6-2.2-1.6-1.3 0-2.2.7-2.2 1.7 0 2.2 4.4 1 4.4 3.2 0 1-.9 1.7-2.2 1.7-1.2 0-2.2-.5-2.2-1.6"/></svg>
+      <span class="label">Resultado anual</span><span class="kbd">6</span>
+    </button>
+    <button data-tab="metodologia" data-label="Contexto y metodología" title="Contexto y metodología — tecla 7">
+      <svg class="ico" viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5c2-1 4-1 7 0v11c-3-1-5-1-7 0z"/><path d="M16 3.5c-2-1-4-1-7 0v11c3-1 5-1 7 0z"/></svg>
+      <span class="label">Metodología</span><span class="kbd">7</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">Bachué, Girardot<br>365 días reales 2025<br>Motor: Monte Carlo (JS)</div>
+</aside>
+
+<div id="main">
+  <header class="topbar">
+    <h1 id="titulo-tab">Resumen</h1>
+    <div class="actions">
+      <button class="btn ghost no-print" id="btn-reset">Restablecer</button>
+      <button class="btn no-print" id="btn-print">Imprimir reporte</button>
+      <button class="btn no-print" id="btn-export">Exportar CSV</button>
+      <button class="btn primary no-print" id="btn-export-excel">Exportar Excel</button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ===== RESUMEN ===== -->
+    <section class="panel active" id="panel-resumen">
+      <p class="lede">Estado del sistema con los controles actuales. Cambia algo en "Control de variables" y esto se actualiza solo.</p>
+      <p class="live-badge" style="margin-bottom:18px"><span class="live-dot"></span> Motor de simulación en vivo — 600 réplicas × 365 días</p>
+
+      <div class="kpi-row">
+        <div class="kpi" id="kpi-card-servicio">
+          <p class="label">Nivel de servicio (tasa de llenado)</p>
+          <p class="value tab-num" id="kpi-servicio">—</p>
+          <span class="pill" id="kpi-servicio-pill"></span>
+          <p class="sub" style="margin-top:6px">Por día (1 − % días con quiebre): <b class="tab-num" id="kpi-servicio-ciclo">—</b></p>
+        </div>
+        <div class="kpi">
+          <p class="label">Costo total proyectado</p>
+          <p class="value tab-num" id="kpi-costo">—</p>
+          <p class="sub" id="kpi-costo-sub">por semana</p>
+        </div>
+        <div class="kpi">
+          <p class="label">Margen simulado</p>
+          <p class="value tab-num" id="kpi-margen">—</p>
+          <p class="sub" id="kpi-margen-sub">—</p>
+        </div>
+        <div class="kpi">
+          <p class="label">Valor de inventario</p>
+          <p class="value tab-num" id="kpi-inventario">—</p>
+          <p class="sub" id="kpi-inventario-sub">—</p>
+        </div>
+      </div>
+
+      <p class="section-title">Alerta de stock por día (riesgo de quiebre bajo la configuración actual)</p>
+      <div class="card"><div class="semaforo-row" id="semaforo"></div></div>
+
+      <p class="section-title">Demanda real histórica vs. demanda proyectada (con los ajustes what-if)</p>
+      <div class="card">
+        <svg class="chart" id="chart-comparativo" viewBox="0 0 640 300" role="img" aria-label="Gráfico de líneas: demanda real histórica de proteína en 2025 comparada con la demanda proyectada según los ajustes what-if"></svg>
+        <div class="legend">
+          <span class="sw"><span class="dot2" style="background:var(--muted)"></span>Real 2025 (sin ajustar)</span>
+          <span class="sw"><span class="dot2" style="background:var(--accent)"></span>Proyectada (con what-if)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VARIABLES (WHAT-IF) ===== -->
+    <section class="panel" id="panel-variables">
+      <p class="lede">Estos controles alimentan directamente el motor de simulación: cada cambio se recalcula y se refleja de inmediato en los resultados, las tablas y los gráficos.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Demanda y estacionalidad</p>
+          <div class="control">
+            <label>Ajuste de demanda global <span class="val tab-num" id="lbl-demanda">1.00x</span></label>
+            <input type="range" id="sl-demanda" min="0.7" max="1.5" step="0.01" value="1.0">
+            <p class="hint">Sube o baja el volumen de venta proyectado de forma pareja.</p>
+          </div>
+          <div class="control">
+            <label style="margin-bottom:10px">Simular tipo de día</label>
+            <div class="preset-row">
+              <button class="preset" data-preset="normal" aria-pressed="true">
+                <svg class="ico" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3.4"/></svg>
+                Normal
+              </button>
+              <button class="preset" data-preset="festivo">
+                <svg class="ico" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5l1.9 4.2 4.6.5-3.5 3.1 1 4.5L8 11.6l-4 2.2 1-4.5-3.5-3.1 4.6-.5z"/></svg>
+                Puente / festivo
+              </button>
+              <button class="preset" data-preset="temporada_alta">
+                <svg class="ico" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12.5l4-4.5 3 3 5.5-6.5"/><path d="M10.5 4.2h3.5v3.5"/></svg>
+                Temporada alta (dic.)
+              </button>
+              <button class="preset" data-preset="temporada_baja">
+                <svg class="ico" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 4.5l4 4.5 3-3 5.5 6.5"/><path d="M10.5 12.8h3.5V9.3"/></svg>
+                Temporada baja
+              </button>
+            </div>
+            <p class="hint">Girardot es destino de turismo de fin de semana: estos botones simulan ese efecto a distinta intensidad.</p>
+          </div>
+          <div class="control" style="margin-bottom:0">
+            <label>Multiplicador de demanda efectivo <span class="val tab-num" id="lbl-mult-efectivo">1.00x</span></label>
+            <p class="hint">Combina el ajuste manual × estacionalidad × platos activos del menú.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Calibración del sistema (Q, R)</p>
+          <div class="control">
+            <label>Factor de calibración de Q <span class="val tab-num" id="lbl-factor">2.0x</span></label>
+            <input type="range" id="sl-factor" min="1" max="3.5" step="0.1" value="2.0">
+            <p class="hint">Multiplica el Q* teórico del EOQ (que ya escala con √demanda). 1.0x = fórmula sin calibrar.</p>
+          </div>
+          <div class="control">
+            <label>Nivel de servicio objetivo <span class="val tab-num" id="lbl-nivel">95%</span></label>
+            <input type="range" id="sl-nivel" min="0.80" max="0.99" step="0.01" value="0.95">
+            <p class="hint">Percentil usado para fijar el punto de reorden R.</p>
+          </div>
+          <div class="control" style="margin-bottom:0">
+            <label>Merma predictiva <span class="val tab-num" id="lbl-merma">8%</span></label>
+            <input type="range" id="sl-merma" min="0" max="0.25" step="0.01" value="0.08">
+            <p class="hint">% de desperdicio/vencimiento estimado. Se suma a almacenamiento (1.5%) y costo de capital (0.5%) para formar el costo de mantener H.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Impuestos y comisiones</p>
+          <div class="control">
+            <label>Tarifa de impuesto <span class="val tab-num" id="lbl-impuesto">8%</span></label>
+            <input type="range" id="sl-impuesto" min="0" max="0.19" step="0.01" value="0.08">
+            <p class="hint">8% = Impuesto al Consumo (restaurante independiente, caso de Bachué). 19% = IVA pleno (solo si operara como franquicia de marca de un tercero).</p>
+          </div>
+          <div class="control" style="margin-bottom:0">
+            <label>Comisión plataformas de domicilio <span class="val tab-num" id="lbl-comision">25%</span></label>
+            <input type="range" id="sl-comision" min="0" max="0.40" step="0.01" value="0.25">
+            <p class="hint">Se aplica solo sobre la parte de venta que va por canal domicilio (según la mezcla real de la empresa). No hay cifra oficial única; 25% es un punto de partida editable.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-title">Modificador virtual de menú</p>
+      <div class="grid-2">
+        <div class="card">
+          <p style="font-size:.85rem; margin-bottom:12px">Desactiva un plato para simular quitarlo de la carta, o edita su precio: el cambio aplica solo a esta simulación, no al archivo de la empresa.</p>
+          <table id="tabla-menu">
+            <thead><tr><th>Activo</th><th>Plato</th><th style="text-align:right">Precio (COP)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Composición de la carta activa</p>
+          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
+            <svg id="donut-carta" viewBox="0 0 260 260" style="width:140px; height:140px; flex-shrink:0" role="img" aria-label="Gráfico de dona: composición de categorías en la carta activa de platos"></svg>
+            <table id="tabla-carta" style="flex:1; min-width:160px">
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SIMULACION DETALLADA ===== -->
+    <section class="panel" id="panel-simulacion">
+      <p class="lede">600 réplicas × 365 días, método "caso de la leche" (número aleatorio → frecuencia acumulada → interpolación), política (Q,R) con lead time probabilístico.</p>
+
+      <div class="kpi-row cols-2">
+        <div class="kpi"><p class="label">% días con quiebre</p><p class="value tab-num" id="kpi-quiebre">—</p></div>
+        <div class="kpi"><p class="label">Pedidos por semana</p><p class="value tab-num" id="kpi-pedidos">—</p></div>
+      </div>
+
+      <div class="card">
+        <p class="section-title" style="margin-top:0">Punto de reorden y cantidad a pedir, por día</p>
+        <table id="tabla-r">
+          <thead><tr><th>Día de pedido</th><th style="text-align:right">R (COP)</th><th style="text-align:right">Q a pedir (COP)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Estabilidad del resultado a 1 año (600 réplicas)</p>
+          <p style="font-size:.84rem; margin-bottom:12px">Cada réplica simula un año completo con una secuencia de demanda distinta. El <b>intervalo de confianza</b> dice qué tan precisa es la cifra reportada como promedio; el rango <b>P5–P95</b> dice qué tan distinto puede salir un solo año (son dos cosas diferentes, no una repetida).</p>
+          <table id="tabla-convergencia">
+            <thead><tr><th>Métrica</th><th style="text-align:right">Nivel de servicio</th></tr></thead>
+            <tbody>
+              <tr><td>Media (600 réplicas)</td><td class="num" id="conv-media">—</td></tr>
+              <tr><td>Desviación estándar</td><td class="num" id="conv-sd">—</td></tr>
+              <tr><td>Intervalo de confianza 95% de la media</td><td class="num" id="conv-ic95">—</td></tr>
+              <tr><td>P5–P95 entre réplicas (1 año individual)</td><td class="num">—</td></tr>
+              <tr><td style="padding-left:24px; color:var(--muted)">Percentil 5</td><td class="num" id="conv-p5">—</td></tr>
+              <tr><td style="padding-left:24px; color:var(--muted)">Percentil 95</td><td class="num" id="conv-p95">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Composición del costo semanal</p>
+          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
+            <svg class="chart" id="chart-costos" viewBox="0 0 260 260" style="width:160px; height:160px; flex-shrink:0" role="img" aria-label="Gráfico de dona: composición del costo semanal entre mantener inventario y ordenar al proveedor"></svg>
+            <div style="flex:1; min-width:160px">
+              <table>
+                <tr><td><span class="dot2" style="background:var(--accent); display:inline-block; margin-right:6px"></span>Mantener inventario</td><td class="num" id="costo-mantener">—</td></tr>
+                <tr><td><span class="dot2" style="background:var(--accent-2); display:inline-block; margin-right:6px"></span>Ordenar al proveedor</td><td class="num" id="costo-ordenar">—</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== LINEA DE TIEMPO ===== -->
+    <section class="panel" id="panel-tiempo">
+      <p class="lede">Recorre el año simulado día por día: reproduce la animación a la velocidad que quieras o muévete manualmente, y observa cómo cambian el inventario, la demanda, el pedido y el estado del negocio en tiempo real.</p>
+
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:4px">
+          <p class="section-title" style="margin:0">Trayectoria de inventario — año completo</p>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+            <div class="speed-group" role="group" aria-label="Velocidad de reproducción">
+              <button class="speed-btn" data-speed="0.5">0.5×</button>
+              <button class="speed-btn" data-speed="1" aria-pressed="true">1×</button>
+              <button class="speed-btn" data-speed="2">2×</button>
+              <button class="speed-btn" data-speed="4">4×</button>
+            </div>
+            <button class="btn primary no-print" id="btn-play" style="padding:9px 18px; min-height:38px">▶ Reproducir año completo</button>
+          </div>
+        </div>
+        <svg class="chart" id="chart-trayectoria" viewBox="0 0 640 340" role="img" aria-label="Gráfico de líneas: trayectoria del inventario on-hand durante el año simulado, con el punto de reorden y los días de quiebre de stock marcados"></svg>
+        <p class="tab-num" id="play-readout" aria-live="polite" style="font-size:.9rem; color:var(--accent); margin:10px 0 0; min-height:1.3em; font-weight:600">&nbsp;</p>
+        <div class="legend">
+          <span class="sw"><span class="dot2" style="background:var(--accent)"></span>Inventario on-hand</span>
+          <span class="sw"><span class="dot2" style="background:var(--muted)"></span>Punto de reorden R</span>
+          <span class="sw"><span class="dot2" style="background:var(--critical)"></span>Día con quiebre</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; margin:22px 0 6px">
+          <button class="btn ghost" id="btn-dia-prev" style="padding:7px 13px; min-height:36px" aria-label="Día anterior">◀</button>
+          <input type="range" id="sl-dia" min="0" max="364" step="1" value="0" style="flex:1" aria-label="Seleccionar día del año">
+          <button class="btn ghost" id="btn-dia-next" style="padding:7px 13px; min-height:36px" aria-label="Día siguiente">▶</button>
+          <span class="val tab-num" id="lbl-dia" style="min-width:9ch; text-align:center">Día 1</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+          <button class="btn ghost" id="btn-quiebre-prev" style="font-size:.78rem; padding:6px 12px; min-height:32px">◀ Quiebre anterior</button>
+          <button class="btn ghost" id="btn-quiebre-next" style="font-size:.78rem; padding:6px 12px; min-height:32px">Quiebre siguiente ▶</button>
+          <span class="tab-num" id="lbl-quiebres" style="font-size:.78rem; color:var(--muted)">—</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px">
+          <p class="section-title" style="margin-top:0">Detalle del día seleccionado</p>
+          <span class="tab-num" id="dia-fecha" style="font-size:.85rem; color:var(--muted)">—</span>
+        </div>
+
+        <div class="kpi-row" style="margin-bottom:22px">
+          <div class="kpi"><p class="label">Inventario al abrir</p><p class="value tab-num" id="chip-inv-inicio" style="font-size:1.4rem">—</p></div>
+          <div class="kpi"><p class="label">Demanda del día</p><p class="value tab-num" id="chip-demanda" style="font-size:1.4rem">—</p></div>
+          <div class="kpi"><p class="label">Inventario al cerrar</p><p class="value tab-num" id="chip-inv-cierre" style="font-size:1.4rem">—</p></div>
+          <div class="kpi"><p class="label">¿Pedido ese día?</p><p class="value tab-num" id="chip-pedido" style="font-size:1.4rem">—</p></div>
+        </div>
+
+        <div class="grid-3">
+          <div>
+            <p style="font-size:.82rem; color:var(--muted); text-align:center; margin-bottom:6px">Nivel de inventario vs. R</p>
+            <svg id="gauge-stock" viewBox="0 0 170 110" style="width:100%; max-width:260px; display:block; margin:0 auto" role="img" aria-label="Medidor: nivel de inventario del día seleccionado frente al punto de reorden"></svg>
+            <p class="tab-num" id="gauge-label" style="text-align:center; font-size:.95rem; font-weight:600; margin-top:-6px">—</p>
+          </div>
+          <div>
+            <p style="font-size:.82rem; color:var(--muted); text-align:center; margin-bottom:6px">Demanda atendida vs. quiebre</p>
+            <svg id="donut-demanda" viewBox="0 0 260 260" style="width:100%; max-width:190px; display:block; margin:0 auto" role="img" aria-label="Gráfico de dona: demanda atendida frente a demanda perdida por quiebre en el día seleccionado"></svg>
+            <div class="legend" style="justify-content:center; margin-top:6px">
+              <span class="sw"><span class="dot2" style="background:var(--good)"></span>Atendida</span>
+              <span class="sw"><span class="dot2" style="background:var(--critical)"></span>Quiebre</span>
+            </div>
+          </div>
+          <div>
+            <p style="font-size:.82rem; color:var(--muted); text-align:center; margin-bottom:6px">Mezcla de canal del mes<br><span style="font-size:.72rem">(proyección empresa 2026, no exclusiva de Bachué)</span></p>
+            <svg id="donut-canal" viewBox="0 0 260 260" style="width:100%; max-width:190px; display:block; margin:0 auto" role="img" aria-label="Gráfico de dona: mezcla de canal in house frente a domicilio del mes del día seleccionado"></svg>
+            <div class="legend" style="justify-content:center; margin-top:6px">
+              <span class="sw"><span class="dot2" style="background:var(--accent)"></span>In house</span>
+              <span class="sw"><span class="dot2" style="background:var(--accent-2)"></span>Domicilio</span>
+            </div>
+          </div>
+        </div>
+
+        <table id="tabla-dia" style="margin-top:22px">
+          <thead><tr><th>Variable</th><th style="text-align:right">Valor ese día</th></tr></thead>
+          <tbody>
+            <tr><td>Día de la semana</td><td class="num" id="dia-semana">—</td></tr>
+            <tr><td>Posición de inventario (on-hand + en tránsito)</td><td class="num" id="dia-posicion">—</td></tr>
+            <tr><td>Punto de reorden R vigente</td><td class="num" id="dia-r">—</td></tr>
+            <tr><td>Detalle del pedido</td><td class="num" id="dia-pedido">—</td></tr>
+            <tr><td>Estado</td><td class="num" id="dia-estado">—</td></tr>
+          </tbody>
+        </table>
+
+        <p class="section-title">Tablas de frecuencia: día anterior y día siguiente</p>
+        <p style="font-size:.84rem; margin-bottom:14px">Son las mismas tablas de frecuencia por intervalos (clases por Sturges, Fase 1) que alimentan el muestreo Monte Carlo — muestran qué tan probable es cada rango de demanda para el día antes y el día después del seleccionado. Funciona para cualquiera de los 365 días del año: solo depende del día de la semana, no de la fecha exacta.</p>
+        <div class="grid-2">
+          <div>
+            <p class="tab-num" id="freq-dia-anterior-titulo" style="font-weight:600; margin-bottom:8px">—</p>
+            <table id="tabla-freq-anterior">
+              <thead><tr><th>Intervalo de demanda (COP)</th><th style="text-align:right">Frec. relativa</th><th style="text-align:right">Frec. acumulada</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div>
+            <p class="tab-num" id="freq-dia-siguiente-titulo" style="font-weight:600; margin-bottom:8px">—</p>
+            <table id="tabla-freq-siguiente">
+              <thead><tr><th>Intervalo de demanda (COP)</th><th style="text-align:right">Frec. relativa</th><th style="text-align:right">Frec. acumulada</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ESCENARIOS ===== -->
+    <section class="panel" id="panel-escenarios">
+      <p class="lede">Guarda la configuración actual como escenario A o B para comparar dos "what-if" en paralelo (ej. temporada alta vs. baja).</p>
+      <div class="preset-row" style="margin-bottom:18px">
+        <button class="btn primary" id="btn-guardar-a">Guardar configuración actual como A</button>
+        <button class="btn" id="btn-guardar-b">Guardar configuración actual como B</button>
+      </div>
+      <div class="scenario-grid">
+        <div class="card scenario-card" id="escenario-A"></div>
+        <div class="card scenario-card" id="escenario-B"></div>
+      </div>
+    </section>
+
+    <!-- ===== RESULTADO ANUAL ===== -->
+    <section class="panel" id="panel-resultado">
+      <p class="lede">Estado de resultados proyectado para el año completo simulado: cuánto entra, cuánto se va en impuesto, materia prima, comisión de domicilios y logística de inventario, y qué queda. Incluye el costo de los quiebres de stock como venta que nunca se facturó.</p>
+      <div class="note" style="margin-bottom:18px">
+        Este resultado cubre únicamente la línea de proteína modelada (Carnes, Pescados, Pollo) de Bachué, que es la
+        porción del negocio sobre la que corre toda esta simulación. No incluye nómina, arriendo, servicios públicos
+        ni el resto de la carta (entradas, pastas, ensaladas, bebidas) — no es la utilidad total del restaurante.
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi" id="kpi-card-utilidad">
+          <p class="label">Resultado operacional del año</p>
+          <p class="value tab-num" id="kpi-utilidad-anual" style="font-size:1.8rem">—</p>
+          <span class="pill" id="kpi-utilidad-pill"></span>
+        </div>
+        <div class="kpi"><p class="label">Ventas brutas del año</p><p class="value tab-num" id="kpi-ventas-brutas">—</p></div>
+        <div class="kpi"><p class="label">Margen neto operacional</p><p class="value tab-num" id="kpi-margen-neto">—</p></div>
+        <div class="kpi"><p class="label">Venta perdida por quiebres (año)</p><p class="value tab-num" id="kpi-quiebre-perdida">—</p></div>
+      </div>
+
+      <p class="section-title">Cascada del resultado: de la venta bruta a la utilidad</p>
+      <div class="card"><svg class="chart" id="chart-waterfall" viewBox="0 0 640 320" role="img" aria-label="Gráfico de cascada: de la venta bruta anual a la utilidad operacional, restando impuesto, materia prima, comisión de domicilios y costo de inventario"></svg></div>
+
+      <div class="grid-2" style="margin-top:14px">
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Estado de resultados detallado (año)</p>
+          <table id="tabla-resultado"><tbody></tbody></table>
+          <p id="resultado-memo" style="font-size:.8rem; margin-top:12px"></p>
+        </div>
+        <div class="card">
+          <p class="section-title" style="margin-top:0">A dónde va cada peso de venta</p>
+          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
+            <svg id="chart-donut-resultado" viewBox="0 0 260 260" style="width:150px; height:150px; flex-shrink:0" role="img" aria-label="Gráfico de dona: a dónde va cada peso de venta del año"></svg>
+            <div class="legend" style="flex-direction:column; align-items:flex-start; gap:6px">
+              <span class="sw"><span class="dot2" style="background:var(--warn)"></span>Impuesto al consumo</span>
+              <span class="sw"><span class="dot2" style="background:var(--accent)"></span>Materia prima</span>
+              <span class="sw"><span class="dot2" style="background:var(--accent-2)"></span>Comisión domicilios</span>
+              <span class="sw"><span class="dot2" style="background:var(--muted)"></span>Costo de inventario</span>
+              <span class="sw"><span class="dot2" style="background:var(--good)"></span>Utilidad operacional</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-title">¿Cuánto vale haber calibrado el sistema?</p>
+      <div class="card">
+        <p style="font-size:.85rem; margin-bottom:16px">Compara el resultado del año con la configuración actual contra lo que daría el EOQ "de libro" sin calibrar (factor 1.0x) — la misma comparación de nivel de servicio de la Fase 4 (~92% vs. 94.9%), ahora en pesos.</p>
+        <table>
+          <thead><tr><th>Escenario</th><th style="text-align:right">Nivel de servicio</th><th style="text-align:right">Utilidad operacional (año)</th></tr></thead>
+          <tbody>
+            <tr><td>Sistema calibrado (configuración actual)</td><td class="num" id="comp-servicio-calibrado">—</td><td class="num" id="comp-utilidad-calibrado">—</td></tr>
+            <tr><td>EOQ puro, sin calibrar (1.0x)</td><td class="num" id="comp-servicio-base">—</td><td class="num" id="comp-utilidad-base">—</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:14px; font-size:.95rem">Diferencia: <b class="tab-num" id="comp-diferencia" style="font-size:1.2rem">—</b></p>
+        <p id="comp-nota" style="font-size:.82rem; margin-top:6px"></p>
+      </div>
+
+      <div class="note" style="margin-top:18px">
+        Dos supuestos editables en "Control de variables" alimentan este resultado y no tienen una cifra oficial única:
+        la tarifa de impuesto (8% de Impuesto al Consumo es lo que aplica a un restaurante independiente en Colombia;
+        19% de IVA solo aplica si opera como franquicia de marca de un tercero, que no es el caso de Bachué) y la
+        comisión de plataformas de domicilio (Acodres reporta contratos iniciales entre 20% y 25%; varía por plataforma
+        y negociación, así que se dejó en 25% como punto de partida editable). La mezcla in-house/domicilio usa la
+        proyección real de canal de toda la empresa, promediada en los 12 meses.
+      </div>
+    </section>
+
+    <!-- ===== METODOLOGIA / CONTEXTO ===== -->
+    <section class="panel" id="panel-metodologia">
+      <p class="section-title" style="margin-top:0">Por qué Bachué no es una tienda cualquiera</p>
+      <p class="lede">
+        El local queda frente al Hotel Bachué, en Girardot, uno de los destinos de fin de semana y puente
+        preferidos por bogotanos que buscan clima cálido. La demanda no fluctúa por ruido aleatorio: responde a un
+        patrón de turismo predecible y de alta intensidad.
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Venta promedio</p>
+          <p style="font-family:var(--font-mono); font-size:1.2rem; margin:0">
+            Fin de semana <b class="tab-num" id="ctx-finde"></b><br>
+            Entre semana <b class="tab-num" id="ctx-semana"></b>
+          </p>
+          <p class="sub" style="margin-top:8px; font-size:.82rem">Efecto turismo: <b class="tab-num" id="ctx-uplift" style="color:var(--accent)"></b> más venta sáb-dom.</p>
+        </div>
+        <div class="card">
+          <p class="section-title" style="margin-top:0">Supuestos fijos de negocio</p>
+          <table>
+            <tr><td>Venta que es proteína</td><td class="num" id="ctx-pct"></td></tr>
+            <tr><td>Food cost</td><td class="num" id="ctx-fc"></td></tr>
+            <tr><td>Costo de ordenar (S)</td><td class="num" id="ctx-s"></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <p class="section-title">Patrón real de venta por día</p>
+      <div class="card"><svg class="chart" id="chart-semanal" viewBox="0 0 640 300" role="img" aria-label="Gráfico de barras: venta real promedio por día de la semana, con barras de error"></svg></div>
+
+      <p class="section-title">Estacionalidad real vs. presupuesto global de la empresa</p>
+      <div class="card">
+        <svg class="chart" id="chart-estacionalidad" viewBox="0 0 640 320" role="img" aria-label="Gráfico de barras agrupadas: porcentaje real de venta de Bachué por mes comparado con el presupuesto REPR global de la empresa"></svg>
+        <div class="legend">
+          <span class="sw"><span class="dot2" style="background:var(--accent)"></span>% real de Bachué</span>
+          <span class="sw"><span class="dot2" style="background:var(--accent-2)"></span>REPR% global (empresa)</span>
+        </div>
+      </div>
+
+      <p class="section-title">Cómo funciona el motor</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size:1rem; margin-top:0">Muestreo de demanda</h3>
+          <p style="font-size:.86rem">
+            Clases por regla de Sturges sobre la venta real 2025, por día de la semana. Número aleatorio → frecuencia
+            acumulada → interpolación continua dentro de la clase: el método de "caso de la leche" (Mathur &amp; Solow).
+          </p>
+        </div>
+        <div class="card">
+          <h3 style="font-size:1rem; margin-top:0">Política (Q,R)</h3>
+          <p style="font-size:.86rem">
+            Revisión continua: si posición de inventario ≤ R, se pide Q. Lead time probabilístico (2 días, 80% /
+            3 días, 20% — la cola del pescado, no local en Girardot). R se calcula sobre esa mezcla real.
+          </p>
+        </div>
+      </div>
+
+      <p class="section-title">Qué falta y por qué no está</p>
+      <div class="note">
+        Este panel no incluye desglose por ingrediente (conversor a kg/litros, criticidad por insumo, mapa de calor
+        plato-ingrediente). Esa funcionalidad requiere una receta o lista de materiales (BOM) real, con los
+        ingredientes y cantidades exactas de cada plato, y el negocio aún no la tiene documentada. Se optó por
+        dejarla fuera en vez de estimar cifras de receta y presentarlas como datos reales. El resto del panel sí
+        corre sobre venta real 2025 de Bachué, o sobre supuestos explícitos y editables (ver "Control de variables").
+      </div>
+
+      <ul class="findings" style="margin-top:20px">
+        <li><b>El EOQ puro no alcanza el nivel de servicio.</b> Con Q* teórico (1.0x), incluso ya con R sobre la mezcla real de lead time: ~92% de servicio real contra un objetivo de 95%.</li>
+        <li><b>Calibrar con Monte Carlo sí cierra la brecha.</b> Q a 2.0x sobre ese mismo R: ~94.9% simulado.</li>
+        <li><b>El turismo de fin de semana es el motor de la variabilidad.</b> +105% de venta sábado-domingo.</li>
+        <li><b>El presupuesto global subestima diciembre en Bachué.</b> 12.0% real vs. 9.1% de REPR% asignado — la mayor brecha del año.</li>
+      </ul>
+    </section>
+
+  </div>
+</div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
